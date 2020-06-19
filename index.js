@@ -20,6 +20,8 @@ const userSchema = new mongoose.Schema({
 
 const userDb = mongoose.model('User', userSchema);
 
+var passwordHash = require('password-hash');
+
 app.get('/userlist', (req, res) => {
     
     userDb.find(function (err, users) {
@@ -30,7 +32,7 @@ app.get('/userlist', (req, res) => {
      
 });
 
-app.post("/authentication/register" , (req , res)=>{
+app.post("/authentication/register" , async(req , res)=>{
 
     const username = req.body.username;
     const password = req.body.password;
@@ -47,24 +49,23 @@ app.post("/authentication/register" , (req , res)=>{
         return;
     }
 
-    findUserByUsername(username , function(callback){
-        console.log("sss" + callback);
-        if(callback != null){
+    const userOutput = await getUser(username);
+        console.log("sss" + userOutput);
+        if(userOutput != null){
             res.send("Registered already")
             return;
         }
-        const newUser = new userDb({username : username , password : password});
+        var hashedPassword = passwordHash.generate(password);
+        const newUser = new userDb({username : username , password : hashedPassword});
         newUser.save(function (err, newUser) {
                if (err) return console.error(err);
                   console.log("data saved");
                   res.send("Register user successfully")
                   return;
                 });
-    });
+            });
 
-});
-
-app.post("/authentication/login" , (req , res)=>{
+app.post("/authentication/login" , async (req , res)=>{
 
     const username = req.body.username;
     const password = req.body.password;
@@ -80,15 +81,14 @@ app.post("/authentication/login" , (req , res)=>{
         res.send("password empty!");
         return;
     }
-  
-    findUserByUsername(username , function(callback){
-        console.log("aa" + callback)
-        if(callback != null){
-            if(callback.password == password){
-                res.send("login successfully");
-                return;
-            }
-            else
+
+    const userOutput = await getUser(username);
+        if(userOutput != null){
+          if(passwordHash.verify(password , userOutput.password)){
+               res.send("login successfully");
+               return;
+           }
+          else
             {
                 res.send("password incorrect");
                 return;
@@ -96,21 +96,17 @@ app.post("/authentication/login" , (req , res)=>{
         }
         else
          res.send("user not registered");  
-    })
-   
-});
+    });
+
 
 app.listen(3000 ,()=>{
     console.log("server ready!");
 });
 
-function findUserByUsername(username , callback){
-    userDb.findOne({'username' : username} , (err, user)=>{
-        if (err) return console.error(err);
-        console.log(user);
-        return callback(user);
-     
-        // res.json(users);
-
-    }) 
-}
+let getUser = async (username) => {
+    const userOutput = await userDb.findOne({
+      username: username
+    });
+  
+    return userOutput;
+  };
