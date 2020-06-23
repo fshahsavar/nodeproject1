@@ -1,8 +1,15 @@
 const express = require('express');
 const app = express();
 const bodyParser = require('body-parser')
-app.use(bodyParser.urlencoded({extended:false}))
-// app.use(express.static("./public"))
+const cors = require('cors')
+app.use(bodyParser.json())
+app.use(bodyParser.urlencoded({extended:true}))
+app.use(
+  cors({
+    origin: "http://localhost:8081",
+    credentials: true,
+  })
+);
 const mongoose = require('mongoose');
 mongoose.connect('mongodb://192.168.99.100/nodetest', {useNewUrlParser: true});
 
@@ -37,22 +44,22 @@ app.post("/authentication/register" , async(req , res)=>{
     const username = req.body.username;
     const password = req.body.password;
     
-    if(username == null)
+    if(!username)
     {
-        res.send("username empty!");
+        res.status(200).json({message : 'username empty!'});
         return;
     }
 
-    if(password == null)
+    if(!password)
     {
-        res.send("password empty!");
+        res.status(200).json({message : 'password empty!'});
         return;
     }
 
     const userOutput = await getUser(username);
         console.log("sss" + userOutput);
         if(userOutput != null){
-            res.send("Registered already")
+            res.status(200).json({message : 'Registered already'});
             return;
         }
         var hashedPassword = passwordHash.generate(password);
@@ -60,7 +67,7 @@ app.post("/authentication/register" , async(req , res)=>{
         newUser.save(function (err, newUser) {
                if (err) return console.error(err);
                   console.log("data saved");
-                  res.send("Register user successfully")
+                  res.status(200).json({message : 'Register user successfully'});
                   return;
                 });
             });
@@ -70,38 +77,43 @@ app.post("/authentication/login" , async (req , res)=>{
     const username = req.body.username;
     const password = req.body.password;
     
-    if(username == null)
+    if(!username)
     {
-        res.send("username empty!");
+        res.status(200).json({message : 'username empty!'});
         return;
     }
 
-    if(password == null)
+    if(!password)
     {
-        res.send("password empty!");
+        res.status(200).json({message : 'password empty!'});
         return;
     }
 
     const userOutput = await getUser(username);
-        if(userOutput != null){
+    console.log("aaa" + userOutput);
+        if(userOutput){
           if(passwordHash.verify(password , userOutput.password)){
-               res.send("login successfully");
+               res.status(200).json({message : 'login successfully'})
                return;
            }
           else
             {
-                res.send("password incorrect");
+                res.status(200).json({message : 'password incorrect'})
                 return;
             }
         }
-        else
-         res.send("user not registered");  
+        else{
+            res.status(200).json({message : 'user not registered'})
+        }
+         
     });
 
 
 app.listen(3000 ,()=>{
     console.log("server ready!");
 });
+
+
 
 let getUser = async (username) => {
     const userOutput = await userDb.findOne({
